@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import ReactMarkdown from "react-markdown";
+import { Sun, Moon, Copy, Menu } from "lucide-react";
 
 export default function Chatbot() {
 
@@ -9,94 +11,46 @@ export default function Chatbot() {
     content: "Hello! How can I help you today?"
   };
 
-  const [messages, setMessages] = useState(() => {
-    try {
-      const raw = localStorage.getItem("chat_history");
-      if (raw) return JSON.parse(raw);
-    } catch {}
-    return [defaultIntro];
-  });
-
-  const [conversations, setConversations] = useState(() => {
-    try {
-      const raw = localStorage.getItem("chat_conversations");
-      if (raw) return JSON.parse(raw);
-    } catch {}
-    return [];
-  });
-
+  const [messages, setMessages] = useState([defaultIntro]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [darkMode, setDarkMode] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const bottomRef = useRef(null);
 
+  // auto scroll
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  useEffect(() => {
-    localStorage.setItem("chat_history", JSON.stringify(messages));
-  }, [messages]);
+  // typing animation
+  const typeMessage = (text, updatedMessages) => {
 
-  useEffect(() => {
-    localStorage.setItem("chat_conversations", JSON.stringify(conversations));
-  }, [conversations]);
+    let index = 0;
 
-  const newConversation = () => {
-    setMessages([defaultIntro]);
-  };
-
-  const saveConversation = () => {
-
-    const name = prompt(
-      "Name for this conversation:",
-      `Conversation ${conversations.length + 1}`
-    );
-
-    if (!name) return;
-
-    const slot = {
-      id: Date.now(),
-      name,
-      messages,
-      createdAt: new Date().toISOString()
+    const botMessage = {
+      id: Date.now() + 1,
+      role: "assistant",
+      content: ""
     };
 
-    setConversations([slot, ...conversations]);
-  };
+    setMessages([...updatedMessages, botMessage]);
 
-  const loadConversation = (slot) => {
-    if (!slot?.messages) return;
-    setMessages(slot.messages);
-  };
+    const interval = setInterval(() => {
 
-  const deleteConversation = (id) => {
-    if (!confirm("Delete this conversation?")) return;
-    setConversations(conversations.filter((c) => c.id !== id));
-  };
+      index++;
 
-  const clearHistory = () => {
-    localStorage.removeItem("chat_history");
-    setMessages([defaultIntro]);
-  };
+      botMessage.content = text.slice(0, index);
 
-  const exportHistory = () => {
+      setMessages([...updatedMessages, { ...botMessage }]);
 
-    const dataStr = JSON.stringify(messages, null, 2);
-    const blob = new Blob([dataStr], { type: "application/json" });
+      if (index >= text.length) {
+        clearInterval(interval);
+        setLoading(false);
+      }
 
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement("a");
-
-    a.href = url;
-    a.download = `chat-history-${Date.now()}.json`;
-
-    document.body.appendChild(a);
-    a.click();
-
-    a.remove();
-    URL.revokeObjectURL(url);
+    }, 15);
   };
 
   const sendMessage = async () => {
@@ -134,21 +88,12 @@ export default function Chatbot() {
         data?.choices?.[0]?.message?.content ||
         "Sorry, I couldn't generate a response.";
 
-      const botMessage = {
-        id: Date.now() + 1,
-        role: "assistant",
-        content: botReply
-      };
-
-      setTimeout(() => {
-        setMessages([...updatedMessages, botMessage]);
-        setLoading(false);
-      }, 800);
+      typeMessage(botReply, updatedMessages);
 
     } catch {
 
       const errorMessage = {
-        id: Date.now() + 2,
+        id: Date.now(),
         role: "assistant",
         content: "⚠️ Server error. Please try again."
       };
@@ -158,173 +103,152 @@ export default function Chatbot() {
     }
   };
 
+  const copyText = (text) => {
+    navigator.clipboard.writeText(text);
+  };
+
   return (
-    <div className="flex items-center justify-center min-h-screen p-4">
 
-      {/* Responsive container */}
-      <div className="w-full max-w-6xl flex flex-col md:flex-row gap-4">
+    <div className={`${darkMode ? "bg-slate-900" : "bg-gray-100"} min-h-screen flex`}>
 
-        {/* Sidebar */}
-        <aside className="w-full md:w-64 bg-white/5 backdrop-blur rounded-2xl p-4 flex flex-col h-[40vh] md:h-[80vh]">
+      {/* Sidebar */}
+      <aside className={`fixed md:relative z-40 w-64 h-full bg-black/40 backdrop-blur-lg p-4 transition-transform ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0`}>
 
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-white font-semibold">Conversations</h2>
+        <h2 className="text-white text-lg font-semibold mb-4">
+          Conversations
+        </h2>
 
-            <button
-              onClick={newConversation}
-              className="text-xs bg-white/10 hover:bg-white/20 text-white px-2 py-1 rounded-md"
-            >
-              New
-            </button>
-          </div>
-
-          <div className="flex gap-2 mb-3">
-
-            <button
-              onClick={saveConversation}
-              className="flex-1 text-sm bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded-md"
-            >
-              Save
-            </button>
-
-            <button
-              onClick={() => setConversations([])}
-              className="text-sm bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-md"
-            >
-              Clear
-            </button>
-
-          </div>
-
-          <ul className="flex-1 overflow-y-auto space-y-2">
-            {conversations.length === 0 && (
-              <li className="text-sm text-white/60">
-                No saved conversations
-              </li>
-            )}
-
-            {conversations.map((c) => (
-              <li
-                key={c.id}
-                className="bg-white/6 p-2 rounded-md flex justify-between items-center"
-              >
-
-                <button
-                  onClick={() => loadConversation(c)}
-                  className="text-left flex-1"
-                >
-
-                  <div className="text-sm font-medium text-white">
-                    {c.name}
-                  </div>
-
-                  <div className="text-xs text-white/60">
-                    {new Date(c.createdAt).toLocaleString()}
-                  </div>
-
-                </button>
-
-                <button
-                  onClick={() => deleteConversation(c.id)}
-                  className="text-xs bg-red-600 px-2 py-1 rounded ml-2"
-                >
-                  Del
-                </button>
-
-              </li>
-            ))}
-          </ul>
-        </aside>
-
-        {/* Chat Panel */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="flex-1 bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-4 md:p-6 flex flex-col h-[60vh] md:h-[80vh]"
+        <button
+        onClick={() => setMessages([defaultIntro])}
+        className="w-full bg-indigo-600 text-white py-2 rounded-lg"
         >
+        + New Chat
+        </button>
 
-          <div className="flex flex-col sm:flex-row sm:justify-between gap-3 mb-4">
+      </aside>
 
-            <h1 className="text-white text-xl md:text-2xl font-semibold">
-              ✨ AI Assistant
+      {/* Main Chat */}
+      <div className="flex-1 flex flex-col h-screen">
+
+        {/* Header */}
+        <div className="flex justify-between items-center p-4 border-b border-white/10">
+
+          <div className="flex items-center gap-3">
+
+            <button
+            className="md:hidden text-white"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            >
+              <Menu size={22}/>
+            </button>
+
+            <h1 className="text-white text-xl font-bold">
+              🤖 AI Assistant
             </h1>
 
-            <div className="flex gap-2">
-
-              <button
-                onClick={exportHistory}
-                className="text-sm bg-white/10 hover:bg-white/20 text-white px-3 py-1 rounded-md"
-              >
-                Export
-              </button>
-
-              <button
-                onClick={clearHistory}
-                className="text-sm bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-md"
-              >
-                Clear
-              </button>
-
-            </div>
-
           </div>
 
-          <div className="flex-1 overflow-y-auto space-y-4">
+          <button
+          onClick={() => setDarkMode(!darkMode)}
+          className="text-white"
+          >
+          {darkMode ? <Sun size={20}/> : <Moon size={20}/>}
+          </button>
 
-            <AnimatePresence>
-              {messages.map((msg) => (
-                <motion.div
-                  key={msg.id}
-                  initial={{ opacity: 0, x: msg.role === "user" ? 200 : -200 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.4 }}
-                  className={`p-4 rounded-2xl max-w-[85%] md:max-w-[70%] shadow-xl ${
-                    msg.role === "user"
-                      ? "bg-gradient-to-r from-cyan-400 to-teal-500 text-black ml-auto"
-                      : "bg-white/20 text-white"
-                  }`}
+        </div>
+
+        {/* Chat messages */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+
+          <AnimatePresence>
+
+            {messages.map((msg) => (
+
+              <motion.div
+              key={msg.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={`flex gap-3 ${msg.role === "user" ? "justify-end" : ""}`}
+              >
+
+                {msg.role === "assistant" && (
+                  <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center text-white">
+                    🤖
+                  </div>
+                )}
+
+                <div
+                className={`relative p-4 rounded-xl max-w-[70%] ${
+                  msg.role === "user"
+                    ? "bg-cyan-500 text-black"
+                    : "bg-white/20 text-white"
+                }`}
                 >
+
+                  <ReactMarkdown>
                   {msg.content}
-                </motion.div>
-              ))}
-            </AnimatePresence>
+                  </ReactMarkdown>
 
-            {loading && (
-              <div className="flex space-x-2">
-                <div className="w-3 h-3 bg-white rounded-full animate-bounce"></div>
-                <div className="w-3 h-3 bg-white rounded-full animate-bounce delay-150"></div>
-                <div className="w-3 h-3 bg-white rounded-full animate-bounce delay-300"></div>
-              </div>
-            )}
+                  {msg.role === "assistant" && (
+                    <button
+                    onClick={() => copyText(msg.content)}
+                    className="absolute top-2 right-2 opacity-60 hover:opacity-100"
+                    >
+                      <Copy size={14}/>
+                    </button>
+                  )}
 
-            <div ref={bottomRef}></div>
-          </div>
+                </div>
 
-          <div className="mt-4 flex flex-col sm:flex-row gap-2">
+                {msg.role === "user" && (
+                  <div className="w-8 h-8 bg-cyan-500 rounded-full flex items-center justify-center text-black">
+                    👤
+                  </div>
+                )}
 
-            <input
-              type="text"
-              className="flex-1 p-3 rounded-xl bg-white/20 text-white outline-none placeholder-gray-300 w-full"
-              placeholder="Type your message..."
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-            />
+              </motion.div>
 
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={sendMessage}
-              disabled={loading}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-xl shadow-lg w-full sm:w-auto"
-            >
-              Send
-            </motion.button>
+            ))}
 
-          </div>
+          </AnimatePresence>
 
-        </motion.div>
+          {loading && (
+            <div className="flex gap-2">
+              <div className="w-2 h-2 bg-white rounded-full animate-bounce"></div>
+              <div className="w-2 h-2 bg-white rounded-full animate-bounce delay-150"></div>
+              <div className="w-2 h-2 bg-white rounded-full animate-bounce delay-300"></div>
+            </div>
+          )}
+
+          <div ref={bottomRef}></div>
+
+        </div>
+
+        {/* Input */}
+        <div className="p-4 flex gap-2 border-t border-white/10">
+
+          <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+          placeholder="Type your message..."
+          className="flex-1 p-3 rounded-lg bg-white/20 text-white outline-none"
+          />
+
+          <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={sendMessage}
+          className="bg-indigo-600 px-5 rounded-lg text-white"
+          >
+          Send
+          </motion.button>
+
+        </div>
+
       </div>
+
     </div>
   );
 }
