@@ -2,16 +2,23 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import { Sun, Moon, Copy, Menu } from "lucide-react";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 
 export default function Chatbot() {
 
   const defaultIntro = {
     id: Date.now(),
     role: "assistant",
-    content: "Hello! How can I help you today?"
+    content: "Hello! How can I help you today?",
+    time: new Date().toLocaleTimeString()
   };
 
-  const [messages, setMessages] = useState([defaultIntro]);
+  const [messages, setMessages] = useState(() => {
+    const saved = localStorage.getItem("ai_messages");
+    return saved ? JSON.parse(saved) : [defaultIntro];
+  });
+
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
@@ -24,19 +31,27 @@ export default function Chatbot() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Save messages
+  useEffect(() => {
+    localStorage.setItem("ai_messages", JSON.stringify(messages));
+  }, [messages]);
+
   // ChatGPT typing animation
   const typeMessage = (text, updatedMessages) => {
+
     let index = 0;
 
     const botMessage = {
       id: Date.now() + 1,
       role: "assistant",
-      content: ""
+      content: "",
+      time: new Date().toLocaleTimeString()
     };
 
     setMessages([...updatedMessages, botMessage]);
 
     const interval = setInterval(() => {
+
       index++;
 
       botMessage.content = text.slice(0, index);
@@ -51,7 +66,6 @@ export default function Chatbot() {
     }, 15);
   };
 
-  // Send message
   const sendMessage = async () => {
 
     if (!input.trim()) return;
@@ -59,7 +73,8 @@ export default function Chatbot() {
     const userMessage = {
       id: Date.now(),
       role: "user",
-      content: input
+      content: input,
+      time: new Date().toLocaleTimeString()
     };
 
     const updatedMessages = [...messages, userMessage];
@@ -94,7 +109,8 @@ export default function Chatbot() {
       const errorMessage = {
         id: Date.now(),
         role: "assistant",
-        content: "⚠️ Server error. Please try again."
+        content: "⚠️ Server error. Please try again.",
+        time: new Date().toLocaleTimeString()
       };
 
       setMessages([...updatedMessages, errorMessage]);
@@ -157,7 +173,7 @@ export default function Chatbot() {
 
         </div>
 
-        {/* Chat Messages */}
+        {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
 
           <AnimatePresence>
@@ -177,15 +193,36 @@ export default function Chatbot() {
                   </div>
                 )}
 
-                <div
-                  className={`relative p-4 rounded-xl max-w-[70%] ${
-                    msg.role === "user"
-                      ? "bg-cyan-500 text-black"
-                      : "bg-white/20 text-white"
-                  }`}
-                >
+                <div className={`relative p-4 rounded-xl max-w-[70%] ${
+                  msg.role === "user"
+                    ? "bg-cyan-500 text-black"
+                    : "bg-white/20 text-white"
+                }`}>
 
-                  <ReactMarkdown>
+                  <ReactMarkdown
+                    components={{
+                      code({inline, className, children}) {
+
+                        const match = /language-(\w+)/.exec(className || "");
+
+                        return !inline && match ? (
+
+                          <SyntaxHighlighter
+                            style={oneDark}
+                            language={match[1]}
+                            PreTag="div"
+                          >
+                            {String(children).replace(/\n$/, "")}
+                          </SyntaxHighlighter>
+
+                        ) : (
+                          <code className="bg-black/40 px-1 rounded">
+                            {children}
+                          </code>
+                        );
+                      }
+                    }}
+                  >
                     {msg.content}
                   </ReactMarkdown>
 
@@ -197,6 +234,10 @@ export default function Chatbot() {
                       <Copy size={14}/>
                     </button>
                   )}
+
+                  <div className="text-xs opacity-60 mt-2">
+                    {msg.time}
+                  </div>
 
                 </div>
 
@@ -213,10 +254,8 @@ export default function Chatbot() {
           </AnimatePresence>
 
           {loading && (
-            <div className="flex gap-2">
-              <div className="w-2 h-2 bg-white rounded-full animate-bounce"></div>
-              <div className="w-2 h-2 bg-white rounded-full animate-bounce delay-150"></div>
-              <div className="w-2 h-2 bg-white rounded-full animate-bounce delay-300"></div>
+            <div className="text-white animate-pulse">
+              AI is typing<span className="animate-pulse">...</span>
             </div>
           )}
 
@@ -230,8 +269,8 @@ export default function Chatbot() {
           <input
             type="text"
             value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+            onChange={(e)=>setInput(e.target.value)}
+            onKeyDown={(e)=>e.key==="Enter" && sendMessage()}
             placeholder="Type your message..."
             className="flex-1 p-3 rounded-lg bg-white/20 text-white outline-none"
           />
