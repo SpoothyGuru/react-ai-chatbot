@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
-import { Sun, Moon, Copy, Menu } from "lucide-react";
+import { Sun, Moon, Menu, Copy } from "lucide-react";
 
 export default function Chatbot() {
 
-  const today = new Date().toDateString();
+  const today = new Date().toLocaleDateString();
 
   const defaultIntro = {
     id: Date.now(),
@@ -20,9 +20,7 @@ export default function Chatbot() {
   });
 
   const [activeChat, setActiveChat] = useState(null);
-
   const [messages, setMessages] = useState([defaultIntro]);
-
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
@@ -30,14 +28,17 @@ export default function Chatbot() {
 
   const bottomRef = useRef(null);
 
+  /* Save conversations */
   useEffect(() => {
     localStorage.setItem("ai_conversations", JSON.stringify(conversations));
   }, [conversations]);
 
+  /* Scroll to bottom */
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  /* Update messages inside conversation */
   useEffect(() => {
 
     if (!activeChat) return;
@@ -45,7 +46,7 @@ export default function Chatbot() {
     const updated = conversations.map(chat => {
 
       if (chat.id === activeChat) {
-        return { ...chat, messages: messages };
+        return { ...chat, messages };
       }
 
       return chat;
@@ -56,6 +57,7 @@ export default function Chatbot() {
 
   }, [messages]);
 
+  /* Create new chat */
   const createNewChat = () => {
 
     const newChat = {
@@ -64,12 +66,19 @@ export default function Chatbot() {
       messages: [defaultIntro]
     };
 
-    setConversations([newChat, ...conversations]);
+    setConversations(prev => [newChat, ...prev]);
     setActiveChat(newChat.id);
     setMessages([defaultIntro]);
 
   };
 
+  /* Load chat */
+  const loadChat = (chat) => {
+    setActiveChat(chat.id);
+    setMessages(chat.messages);
+  };
+
+  /* Send message */
   const sendMessage = async () => {
 
     if (!input.trim()) return;
@@ -91,12 +100,8 @@ export default function Chatbot() {
 
       const res = await fetch("/api/chat", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          conversation: updatedMessages
-        })
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversation: updatedMessages })
       });
 
       const data = await res.json();
@@ -148,21 +153,18 @@ export default function Chatbot() {
 
         <button
           onClick={createNewChat}
-          className="w-full bg-indigo-600 text-white py-2 rounded-lg"
+          className="w-full bg-indigo-600 text-white py-2 rounded-lg mb-4"
         >
           + New Chat
         </button>
 
-        <div className="mt-4 space-y-2">
+        <div className="space-y-2">
 
           {conversations.map(chat => (
 
             <div
               key={chat.id}
-              onClick={() => {
-                setActiveChat(chat.id);
-                setMessages(chat.messages);
-              }}
+              onClick={() => loadChat(chat)}
               className="text-white p-2 hover:bg-white/10 rounded cursor-pointer"
             >
               {chat.title}
@@ -174,7 +176,7 @@ export default function Chatbot() {
 
       </aside>
 
-      {/* Main chat */}
+      {/* Main Chat */}
       <div className="flex-1 flex flex-col h-screen">
 
         {/* Header */}
