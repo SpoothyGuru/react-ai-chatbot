@@ -2,22 +2,25 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import { Sun, Moon, Copy, Menu } from "lucide-react";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 
 export default function Chatbot() {
+
+  const today = new Date().toDateString();
 
   const defaultIntro = {
     id: Date.now(),
     role: "assistant",
-    content: "Hello! How can I help you today?",
+    content: `Hello! Today is ${today}. How can I help you today?`,
     time: new Date().toLocaleTimeString()
   };
 
-  const [messages, setMessages] = useState(() => {
-    const saved = localStorage.getItem("ai_messages");
-    return saved ? JSON.parse(saved) : [defaultIntro];
+  const [conversations, setConversations] = useState(() => {
+    const saved = localStorage.getItem("ai_conversations");
+    return saved ? JSON.parse(saved) : [];
   });
+
+  const [activeChat, setActiveChat] = useState(null);
+  const [messages, setMessages] = useState([defaultIntro]);
 
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -26,17 +29,17 @@ export default function Chatbot() {
 
   const bottomRef = useRef(null);
 
-  // Auto scroll
+  // save chats
+  useEffect(() => {
+    localStorage.setItem("ai_conversations", JSON.stringify(conversations));
+  }, [conversations]);
+
+  // auto scroll
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Save messages
-  useEffect(() => {
-    localStorage.setItem("ai_messages", JSON.stringify(messages));
-  }, [messages]);
-
-  // ChatGPT typing animation
+  // typing animation
   const typeMessage = (text, updatedMessages) => {
 
     let index = 0;
@@ -104,6 +107,19 @@ export default function Chatbot() {
 
       typeMessage(botReply, updatedMessages);
 
+      // save messages into conversation
+      const updatedConversations = conversations.map(chat => {
+
+        if (chat.id === activeChat) {
+          return { ...chat, messages: updatedMessages };
+        }
+
+        return chat;
+
+      });
+
+      setConversations(updatedConversations);
+
     } catch {
 
       const errorMessage = {
@@ -123,6 +139,20 @@ export default function Chatbot() {
     navigator.clipboard.writeText(text);
   };
 
+  const createNewChat = () => {
+
+    const newChat = {
+      id: Date.now(),
+      title: "New Chat",
+      messages: [defaultIntro]
+    };
+
+    setConversations([newChat, ...conversations]);
+    setActiveChat(newChat.id);
+    setMessages([defaultIntro]);
+
+  };
+
   return (
 
     <div className={`${darkMode ? "bg-slate-900" : "bg-gray-100"} min-h-screen flex`}>
@@ -135,11 +165,30 @@ export default function Chatbot() {
         </h2>
 
         <button
-          onClick={() => setMessages([defaultIntro])}
+          onClick={createNewChat}
           className="w-full bg-indigo-600 text-white py-2 rounded-lg"
         >
           + New Chat
         </button>
+
+        <div className="mt-4 space-y-2">
+
+          {conversations.map(chat => (
+
+            <div
+              key={chat.id}
+              onClick={() => {
+                setActiveChat(chat.id);
+                setMessages(chat.messages);
+              }}
+              className="text-white p-2 hover:bg-white/10 rounded cursor-pointer"
+            >
+              {chat.title}
+            </div>
+
+          ))}
+
+        </div>
 
       </aside>
 
@@ -187,42 +236,15 @@ export default function Chatbot() {
                 className={`flex gap-3 ${msg.role === "user" ? "justify-end" : ""}`}
               >
 
-                {msg.role === "assistant" && (
-                  <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center text-white">
-                    🤖
-                  </div>
-                )}
+                <div
+                  className={`relative p-4 rounded-xl max-w-[70%] ${
+                    msg.role === "user"
+                      ? "bg-cyan-500 text-black"
+                      : "bg-white/20 text-white"
+                  }`}
+                >
 
-                <div className={`relative p-4 rounded-xl max-w-[70%] ${
-                  msg.role === "user"
-                    ? "bg-cyan-500 text-black"
-                    : "bg-white/20 text-white"
-                }`}>
-
-                  <ReactMarkdown
-                    components={{
-                      code({inline, className, children}) {
-
-                        const match = /language-(\w+)/.exec(className || "");
-
-                        return !inline && match ? (
-
-                          <SyntaxHighlighter
-                            style={oneDark}
-                            language={match[1]}
-                            PreTag="div"
-                          >
-                            {String(children).replace(/\n$/, "")}
-                          </SyntaxHighlighter>
-
-                        ) : (
-                          <code className="bg-black/40 px-1 rounded">
-                            {children}
-                          </code>
-                        );
-                      }
-                    }}
-                  >
+                  <ReactMarkdown>
                     {msg.content}
                   </ReactMarkdown>
 
@@ -241,12 +263,6 @@ export default function Chatbot() {
 
                 </div>
 
-                {msg.role === "user" && (
-                  <div className="w-8 h-8 bg-cyan-500 rounded-full flex items-center justify-center text-black">
-                    👤
-                  </div>
-                )}
-
               </motion.div>
 
             ))}
@@ -255,7 +271,7 @@ export default function Chatbot() {
 
           {loading && (
             <div className="text-white animate-pulse">
-              AI is typing<span className="animate-pulse">...</span>
+              AI is typing...
             </div>
           )}
 
