@@ -19,14 +19,13 @@ export default function Chatbot() {
 
   const bottomRef = useRef(null);
 
-  // auto scroll
+  // Auto scroll
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // typing animation
+  // ChatGPT typing animation
   const typeMessage = (text, updatedMessages) => {
-
     let index = 0;
 
     const botMessage = {
@@ -38,7 +37,6 @@ export default function Chatbot() {
     setMessages([...updatedMessages, botMessage]);
 
     const interval = setInterval(() => {
-
       index++;
 
       botMessage.content = text.slice(0, index);
@@ -53,6 +51,7 @@ export default function Chatbot() {
     }, 15);
   };
 
+  // Send message
   const sendMessage = async () => {
 
     if (!input.trim()) return;
@@ -100,6 +99,7 @@ export default function Chatbot() {
 
       setMessages([...updatedMessages, errorMessage]);
       setLoading(false);
+
     }
   };
 
@@ -119,10 +119,10 @@ export default function Chatbot() {
         </h2>
 
         <button
-        onClick={() => setMessages([defaultIntro])}
-        className="w-full bg-indigo-600 text-white py-2 rounded-lg"
+          onClick={() => setMessages([defaultIntro])}
+          className="w-full bg-indigo-600 text-white py-2 rounded-lg"
         >
-        + New Chat
+          + New Chat
         </button>
 
       </aside>
@@ -136,8 +136,8 @@ export default function Chatbot() {
           <div className="flex items-center gap-3">
 
             <button
-            className="md:hidden text-white"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="md:hidden text-white"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
             >
               <Menu size={22}/>
             </button>
@@ -149,15 +149,15 @@ export default function Chatbot() {
           </div>
 
           <button
-          onClick={() => setDarkMode(!darkMode)}
-          className="text-white"
+            onClick={() => setDarkMode(!darkMode)}
+            className="text-white"
           >
-          {darkMode ? <Sun size={20}/> : <Moon size={20}/>}
+            {darkMode ? <Sun size={20}/> : <Moon size={20}/>}
           </button>
 
         </div>
 
-        {/* Chat messages */}
+        {/* Chat Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
 
           <AnimatePresence>
@@ -165,10 +165,10 @@ export default function Chatbot() {
             {messages.map((msg) => (
 
               <motion.div
-              key={msg.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={`flex gap-3 ${msg.role === "user" ? "justify-end" : ""}`}
+                key={msg.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`flex gap-3 ${msg.role === "user" ? "justify-end" : ""}`}
               >
 
                 {msg.role === "assistant" && (
@@ -178,21 +178,21 @@ export default function Chatbot() {
                 )}
 
                 <div
-                className={`relative p-4 rounded-xl max-w-[70%] ${
-                  msg.role === "user"
-                    ? "bg-cyan-500 text-black"
-                    : "bg-white/20 text-white"
-                }`}
+                  className={`relative p-4 rounded-xl max-w-[70%] ${
+                    msg.role === "user"
+                      ? "bg-cyan-500 text-black"
+                      : "bg-white/20 text-white"
+                  }`}
                 >
 
                   <ReactMarkdown>
-                  {msg.content}
+                    {msg.content}
                   </ReactMarkdown>
 
                   {msg.role === "assistant" && (
                     <button
-                    onClick={() => copyText(msg.content)}
-                    className="absolute top-2 right-2 opacity-60 hover:opacity-100"
+                      onClick={() => copyText(msg.content)}
+                      className="absolute top-2 right-2 opacity-60 hover:opacity-100"
                     >
                       <Copy size={14}/>
                     </button>
@@ -228,21 +228,21 @@ export default function Chatbot() {
         <div className="p-4 flex gap-2 border-t border-white/10">
 
           <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-          placeholder="Type your message..."
-          className="flex-1 p-3 rounded-lg bg-white/20 text-white outline-none"
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+            placeholder="Type your message..."
+            className="flex-1 p-3 rounded-lg bg-white/20 text-white outline-none"
           />
 
           <motion.button
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-          onClick={sendMessage}
-          className="bg-indigo-600 px-5 rounded-lg text-white"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={sendMessage}
+            className="bg-indigo-600 px-5 rounded-lg text-white"
           >
-          Send
+            Send
           </motion.button>
 
         </div>
