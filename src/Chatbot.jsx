@@ -30,31 +30,22 @@ export default function Chatbot() {
 
   const bottomRef = useRef(null);
 
-  // Auto scroll
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Save messages
   useEffect(() => {
-    try {
-      localStorage.setItem("chat_history", JSON.stringify(messages));
-    } catch {}
+    localStorage.setItem("chat_history", JSON.stringify(messages));
   }, [messages]);
 
-  // Save conversations
   useEffect(() => {
-    try {
-      localStorage.setItem("chat_conversations", JSON.stringify(conversations));
-    } catch {}
+    localStorage.setItem("chat_conversations", JSON.stringify(conversations));
   }, [conversations]);
 
-  // New chat
   const newConversation = () => {
     setMessages([defaultIntro]);
   };
 
-  // Save conversation
   const saveConversation = () => {
 
     const name = prompt(
@@ -74,29 +65,24 @@ export default function Chatbot() {
     setConversations([slot, ...conversations]);
   };
 
-  // Load conversation
   const loadConversation = (slot) => {
     if (!slot?.messages) return;
     setMessages(slot.messages);
   };
 
-  // Delete conversation
   const deleteConversation = (id) => {
     if (!confirm("Delete this conversation?")) return;
     setConversations(conversations.filter((c) => c.id !== id));
   };
 
-  // Clear chat
   const clearHistory = () => {
     localStorage.removeItem("chat_history");
     setMessages([defaultIntro]);
   };
 
-  // Export chat
   const exportHistory = () => {
 
     const dataStr = JSON.stringify(messages, null, 2);
-
     const blob = new Blob([dataStr], { type: "application/json" });
 
     const url = URL.createObjectURL(blob);
@@ -113,7 +99,6 @@ export default function Chatbot() {
     URL.revokeObjectURL(url);
   };
 
-  // Send message
   const sendMessage = async () => {
 
     if (!input.trim()) return;
@@ -142,13 +127,7 @@ export default function Chatbot() {
         })
       });
 
-      if (!res.ok) {
-        throw new Error(`Server error: ${res.status}`);
-      }
-
       const data = await res.json();
-
-      console.log("API response:", data);
 
       const botReply =
         data?.text ||
@@ -166,9 +145,7 @@ export default function Chatbot() {
         setLoading(false);
       }, 800);
 
-    } catch (error) {
-
-      console.error(error);
+    } catch {
 
       const errorMessage = {
         id: Date.now() + 2,
@@ -184,10 +161,11 @@ export default function Chatbot() {
   return (
     <div className="flex items-center justify-center min-h-screen p-4">
 
-      <div className="w-full max-w-5xl flex gap-4">
+      {/* Responsive container */}
+      <div className="w-full max-w-6xl flex flex-col md:flex-row gap-4">
 
         {/* Sidebar */}
-        <aside className="w-64 bg-white/5 backdrop-blur rounded-2xl p-4 flex flex-col h-[80vh]">
+        <aside className="w-full md:w-64 bg-white/5 backdrop-blur rounded-2xl p-4 flex flex-col h-[40vh] md:h-[80vh]">
 
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-white font-semibold">Conversations</h2>
@@ -219,7 +197,6 @@ export default function Chatbot() {
           </div>
 
           <ul className="flex-1 overflow-y-auto space-y-2">
-
             {conversations.length === 0 && (
               <li className="text-sm text-white/60">
                 No saved conversations
@@ -227,7 +204,6 @@ export default function Chatbot() {
             )}
 
             {conversations.map((c) => (
-
               <li
                 key={c.id}
                 className="bg-white/6 p-2 rounded-md flex justify-between items-center"
@@ -261,16 +237,15 @@ export default function Chatbot() {
         </aside>
 
         {/* Chat Panel */}
-
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="flex-1 bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-6 flex flex-col h-[80vh]"
+          className="flex-1 bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-4 md:p-6 flex flex-col h-[60vh] md:h-[80vh]"
         >
 
-          <div className="flex justify-between mb-4">
+          <div className="flex flex-col sm:flex-row sm:justify-between gap-3 mb-4">
 
-            <h1 className="text-white text-2xl font-semibold">
+            <h1 className="text-white text-xl md:text-2xl font-semibold">
               ✨ AI Assistant
             </h1>
 
@@ -297,15 +272,13 @@ export default function Chatbot() {
           <div className="flex-1 overflow-y-auto space-y-4">
 
             <AnimatePresence>
-
               {messages.map((msg) => (
-
                 <motion.div
                   key={msg.id}
                   initial={{ opacity: 0, x: msg.role === "user" ? 200 : -200 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.4 }}
-                  className={`p-4 rounded-2xl max-w-[75%] shadow-xl ${
+                  className={`p-4 rounded-2xl max-w-[85%] md:max-w-[70%] shadow-xl ${
                     msg.role === "user"
                       ? "bg-gradient-to-r from-cyan-400 to-teal-500 text-black ml-auto"
                       : "bg-white/20 text-white"
@@ -313,30 +286,25 @@ export default function Chatbot() {
                 >
                   {msg.content}
                 </motion.div>
-
               ))}
-
             </AnimatePresence>
 
             {loading && (
               <div className="flex space-x-2">
-
                 <div className="w-3 h-3 bg-white rounded-full animate-bounce"></div>
                 <div className="w-3 h-3 bg-white rounded-full animate-bounce delay-150"></div>
                 <div className="w-3 h-3 bg-white rounded-full animate-bounce delay-300"></div>
-
               </div>
             )}
 
             <div ref={bottomRef}></div>
-
           </div>
 
-          <div className="mt-4 flex gap-2">
+          <div className="mt-4 flex flex-col sm:flex-row gap-2">
 
             <input
               type="text"
-              className="flex-1 p-3 rounded-xl bg-white/20 text-white outline-none placeholder-gray-300"
+              className="flex-1 p-3 rounded-xl bg-white/20 text-white outline-none placeholder-gray-300 w-full"
               placeholder="Type your message..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -348,7 +316,7 @@ export default function Chatbot() {
               whileTap={{ scale: 0.9 }}
               onClick={sendMessage}
               disabled={loading}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 rounded-xl shadow-lg"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-xl shadow-lg w-full sm:w-auto"
             >
               Send
             </motion.button>
